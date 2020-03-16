@@ -41,11 +41,11 @@ def label_video(video):
         if i == 5394:
             break
 
-        label = cv2.resize(label, (112,112))
-        frame = cv2.resize(frame, (112,112))
+        label = cv2.resize(label, (896,896))
+        frame = cv2.resize(frame, (896,896))
         frame = frame/255
-        frame = np.reshape(frame, (112,112,1))
-        label = np.reshape(label, (112,112,1))
+        frame = np.reshape(frame, (896,896,1))
+        label = np.reshape(label, (896,896,1))
 
         cv2.imshow('frame', frame)
         cv2.imshow('label', label)
@@ -67,7 +67,7 @@ def label_video(video):
     labels = np.array(labels)
 
     data = data.reshape((5392, 112, 112, 1))
-    labels = labels.reshape((5392, 112,112, 1))
+    labels = labels.reshape((5392, 896,896, 1))
 
 
     return data, labels
@@ -111,11 +111,11 @@ def label_video_generator():
             if i == 5394:
                 break
 
-            label = cv2.resize(label, (112,112))
-            frame = cv2.resize(frame, (112,112))
+            label = cv2.resize(label, (896,896))
+            frame = cv2.resize(frame, (896,896))
             frame = frame/255
-            frame = np.reshape(frame, (1, 112,112,1))
-            label = np.reshape(label, (1, 112,112,1))
+            frame = np.reshape(frame, (1, 896,896,1))
+            label = np.reshape(label, (1, 896,896,1))
             print(frame.shape)
 
             yield (frame, label)
@@ -129,13 +129,13 @@ def label_video_generator():
 
 
 if __name__ == '__main__':
-    videos = ['0254', '0261', '0263', '0255']
-
+    # videos = ['0254', '0261', '0263', '0255']
+    #
     model = Model()
     # model.CAD.fit_generator(label_video_generator(), steps_per_epoch=4313, epochs=4)
-    #
-    #
-    # model.CAD.save('my_model.h5')
 
 
-    model.evaluate('0255')
+    model.CAD.save('RMSProp_test.h5')
+
+
+    model.evaluate('0261')
