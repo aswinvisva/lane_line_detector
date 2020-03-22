@@ -108,9 +108,6 @@ class Lanes:
                 if clusters[indx] != -1:
                     end.append([x,clusters[indx]])
 
-            print(clusters)
-
-
             # averaged_lines = self.average_slope_intercept(frame, lines)
             # line_image = self.display_lines(frame, averaged_lines)
             # combo_image = cv2.addWeighted(frame, 0.8, line_image, 1, 1)

@@ -23,28 +23,18 @@ class Model:
 
         # ENCODER
         inp = Input((896,896, 1))
-        e = Conv2D(32, (3, 3), activation='relu')(inp)
-        e = MaxPooling2D((2, 2))(e)
-        e = Conv2D(64, (3, 3), activation='relu')(e)
-        e = MaxPooling2D((2, 2))(e)
-        e = Dropout(0.25)(e)
+        e = Conv2D(32, (10, 10), activation='relu')(inp)
+        e = MaxPooling2D((10, 10))(e)
+        e = Conv2D(64, (6, 6), activation='relu')(e)
+        e = MaxPooling2D((10, 10))(e)
         e = Conv2D(64, (3, 3), activation='relu')(e)
         l = Flatten()(e)
-        l = Dropout(0.5)(l)
         l = Dense(49, activation='softmax')(l)
         # DECODER
         d = Reshape((7, 7, 1))(l)
-        d = Conv2DTranspose(64, (3, 3), strides=2, activation='relu', padding='same')(d)
+        d = Conv2DTranspose(64, (3, 3), strides=8, activation='relu', padding='same')(d)
         d = BatchNormalization()(d)
-        d = Conv2DTranspose(64, (3, 3), strides=2, activation='relu', padding='same')(d)
-        d = BatchNormalization()(d)
-        d = Conv2DTranspose(64, (3, 3), strides=2, activation='relu', padding='same')(d)
-        d = BatchNormalization()(d)
-        d = Conv2DTranspose(64, (3, 3), strides=2, activation='relu', padding='same')(d)
-        d = BatchNormalization()(d)
-        d = Conv2DTranspose(64, (3, 3), strides=2, activation='relu', padding='same')(d)
-        d = BatchNormalization()(d)
-        d = Conv2DTranspose(64, (3, 3), strides=2, activation='relu', padding='same')(d)
+        d = Conv2DTranspose(64, (3, 3), strides=8, activation='relu', padding='same')(d)
         d = BatchNormalization()(d)
         d = Conv2DTranspose(64, (3, 3), strides=2, activation='relu', padding='same')(d)
         d = BatchNormalization()(d)
@@ -66,22 +56,80 @@ class Model:
             tf.keras.layers.Dense(2, activation='relu')
         ])
         opt = tf.keras.optimizers.RMSprop(lr=0.0001, decay=1e-6)
-        self.Flow.compile(loss="binary_crossentropy", optimizer=opt, metrics=["accuracy"])
+        self.Flow.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
 
         print(self.Flow.summary())
         print(self.CAD.summary())
 
     def train_CAD(self, train, labels):
-        self.CAD.fit(train, labels, epochs=5, batch_size=5)
+        self.CAD.fit(train, labels, epochs=1, batch_size=5)
         self.CAD.save('my_model.h5')
+        self.CAD.evaluate('0261')
 
     def train_Flow(self, train, labels):
         self.Flow.fit(train, labels, epochs=5, batch_size=5)
 
+    def label_video_generator(self):
+
+        videos = ['0254']
+
+        for video in videos:
+            video_path = os.path.join("/home/aswinvisva/watonomous/Jiqing Expressway Video", "IMG_" + video + ".MOV")
+            print(video_path)
+
+            cap = cv2.VideoCapture(video_path)
+
+            i = 1
+            while (True):
+                # Capture frame-by-frame
+                ret, frame = cap.read()
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+                label_path = os.path.join("/home/aswinvisva/watonomous", "Lane_Parameters", video, str(i) + ".txt")
+
+                f = open(label_path, "r")
+
+                label = np.zeros(frame.shape)
+                matches = []
+                for x in f:
+                    matches = re.findall('\(.*?,.*?\)', x)
+
+                    matches = [ast.literal_eval(x) for x in matches]
+                    for idx, tup in enumerate(matches):
+                        if idx == len(matches) - 1:
+                            break
+                        if tup[0] > 1918 or tup[1] > 1078:
+                            continue
+
+                        label = cv2.line(label, tup, matches[idx + 1], (255, 255, 255), 10)
+
+                i += 1
+
+                if i == 1000:
+                    break
+
+                label = np.resize(label, (896,896))
+                frame = np.resize(frame, (896,896))
+                frame = frame / 255
+                frame = np.reshape(frame, (1, 896,896, 1))
+                label = np.reshape(label, (1, 896,896, 1))
+
+                yield (frame, label)
+
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+
+            cap.release()
+            cv2.destroyAllWindows()
+
+    def model_fit_generator(self):
+        self.CAD.fit(x=self.label_video_generator(), epochs=1)
+        self.CAD.save('my_model.h5')
+        self.evaluate('0261')
+
     def evaluate(self, video):
-        self.CAD = tf.keras.models.load_model('RMSProp_test.h5')
+        self.CAD = tf.keras.models.load_model('my_model.h5')
         video_path = os.path.join("/home/aswinvisva/watonomous/Jiqing Expressway Video", "IMG_" + video + ".MOV")
-        print(video_path)
 
         cap = cv2.VideoCapture(video_path)
 
@@ -120,7 +168,8 @@ class Model:
             frame = np.reshape(frame, (896,896, 1))
             label = np.reshape(label, (896,896, 1))
             predicted = self.CAD.predict(np.expand_dims(frame, axis=0))
-            predicted = np.array(predicted) 
+            predicted = np.array(predicted)
+            predicted = predicted*255
             predicted = predicted.reshape((896,896, 1))
 
 
